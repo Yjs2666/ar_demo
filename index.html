@@ -63,7 +63,7 @@
         var scene = null;
         var sceneToRender = null;
         var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
-        var createScene = function () {
+        var createScene = async function () {
     // This creates a basic Babylon Scene object (non-mesh)
     var scene = new BABYLON.Scene(engine);
 
@@ -74,7 +74,7 @@
     camera.setTarget(BABYLON.Vector3.Zero());
 
     // This attaches the camera to the canvas
-    camera.attachControl(canvas, true);
+    <!-- // camera.attachControl(canvas, true); -->
 
     // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
     var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
@@ -82,17 +82,29 @@
     // Default intensity is 1. Let's dim the light a small amount
     light.intensity = 0.7;
 
-    // // Our built-in 'sphere' shape.
-    // var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene);
-
-    // Move the sphere upward 1/2 its height
-    // sphere.position.y = 1;
-
     // Our built-in 'ground' shape.
-    var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, scene);
+    var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 1, height: 1}, scene);
 
-    BABYLON.ImportMeshAsync(Assets.meshes.Yeti.rootUrl + Assets.meshes.Yeti.filename, scene, { meshNames: "" }).then(function (result) {result.meshes[0].scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);});
+    const groundMaterial = new BABYLON.StandardMaterial("Ground Material", scene);
+    groundMaterial.diffuseColor = BABYLON.Color3.Red();
+    ground.material = groundMaterial;
 
+    let groundTexture = new BABYLON.Texture(Assets.textures.checkerboard_basecolor_png.path, scene);
+    groundMaterial.diffuseTexture = groundTexture;
+
+    BABYLON.ImportMeshAsync(Assets.meshes.Yeti.rootUrl + Assets.meshes.Yeti.filename, scene, { meshNames: "" }).then((result)=> {
+        let yeti = result.meshes[0];
+        yeti.scaling = new BABYLON.Vector3(0.02, 0.02, 0.02);
+        yeti.position = new BABYLON.Vector3(0,0,2);
+    });
+
+    const xr = await scene.createDefaultXRExperienceAsync({
+    // ask for an ar-session
+    uiOptions: {
+      sessionMode: "immersive-ar",
+    },
+    });
+    
     return scene;
 };
                 window.initFunction = async function() {
@@ -117,7 +129,8 @@
         if (!engine) throw 'engine should not be null.';
         startRenderLoop(engine, canvas);
         window.scene = createScene();};
-        initFunction().then(() => {sceneToRender = scene
+        initFunction().then(() => {scene.then(returnedScene => { sceneToRender = returnedScene; });
+        
                     });
 
                     // Resize
